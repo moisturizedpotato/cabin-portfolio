@@ -88,7 +88,7 @@ const exrLoader = new EXRLoader();
 exrLoader.setDataType(THREE.HalfFloatType);
 
 // 3. Load the EXR file
-exrLoader.load('/images/night_sky.exr', function (texture) {
+exrLoader.load('/images/night_sky-v2.exr', function (texture) {
     
     // Tell Three.js this is an equirectangular sphere map
     texture.mapping = THREE.EquirectangularReflectionMapping;
