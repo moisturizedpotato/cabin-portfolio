@@ -29,6 +29,7 @@ const flickeringLights = [];
 const interactableWheels = [];
 const interactableFlowers = [];
 const cursorParticles = [];
+const highlightBoxes = [];
 
 let lantern = null;
 let door = null;
@@ -58,16 +59,33 @@ window.addEventListener('mousemove', (event) => {
   }
 });
 
-window.addEventListener('click', (event)=>{
+window.addEventListener('touchstart', (event)=>{
+  pointer.x = (event.touches[0].clientX / sizes.width) * 2 - 1;
+  pointer.y = -(event.touches[0].clientY / sizes.height) * 2 + 1;
+  },
+  {passive: false}
+);
+
+function handleRaycasterInteraction()
+{
   if (currentIntersects.length > 0)
   {
     const object = currentIntersects[0].object;
     if (object.name.includes("door"))
     {
-      door.userData.isOpen = !door.userData.isOpen;
+      object.userData.isOpen = !object.userData.isOpen;
     }
   }
-});
+}
+
+window.addEventListener('touchend', (event)=>{
+  event.preventDefault();
+  handleRaycasterInteraction();
+  },
+  {passive: false}
+); 
+
+window.addEventListener('click', handleRaycasterInteraction);
 
 adjustCameraForScreen();
 
@@ -98,9 +116,8 @@ window.addEventListener('resize', () => {
 });
 
 async function init() {
-  await loadEnvironment(scene);
-
-  const cabin = await loadCabin({
+  const environmentPromise = loadEnvironment(scene);
+  const cabinPromise = loadCabin({
     scene,
     gltfLoader,
     textureMap,
@@ -110,8 +127,11 @@ async function init() {
     flickeringLights,
     interactableFlowers,
     door,
+    highlightBoxes,
     BLOOM_SCENE: 1,
   });
+
+  const cabin = await Promise.all([environmentPromise, cabinPromise]).then(([, loadedCabin]) => loadedCabin);
 
   lantern = cabin.lantern;
   door = cabin.door;
@@ -176,6 +196,14 @@ async function init() {
     flower.userData.targetIntensity = flower.userData.baseIntensity;
     });
 
+    highlightBoxes.forEach(box => {
+    box.visible = false;
+    
+    // IMPORTANT: Tell the box to recalculate its position in case 
+    // the door it is attached to is currently swinging open/closed!
+    box.update(); 
+    });
+
     for (let i = 0; i < currentIntersects.length; i += 1) {
       if (currentIntersects[i].object.name.includes("wheel"))
       {
@@ -190,6 +218,16 @@ async function init() {
       if (currentIntersects[i].object.name.includes("door"))
       {
         targetRotation = door.userData.isOpen ? door.userData.openRotation : door.userData.closedRotation;
+      }
+    }
+    if (currentIntersects.length > 0) {
+      const hoveredObj = currentIntersects[0].object;
+
+      // 4. If it's a target object AND it hasn't been clicked/opened yet... show the box!
+      if (hoveredObj.name.toLowerCase().includes('target') && !hoveredObj.userData.isOpen) {
+        if (hoveredObj.userData.boundingBox) {
+          hoveredObj.userData.boundingBox.visible = true;
+        }
       }
     }
 

@@ -22,7 +22,7 @@ export function createTextureLibrary(textureLoader) {
   };
 }
 
-export function loadCabin({ scene, gltfLoader, textureMap, loadedTextures, raycasterObjects, interactableWheels, flickeringLights, interactableFlowers, bloomLayer, door, BLOOM_SCENE }) {
+export function loadCabin({ scene, gltfLoader, textureMap, loadedTextures, raycasterObjects, interactableWheels, flickeringLights, interactableFlowers, bloomLayer, door, highlightBoxes, BLOOM_SCENE }) {
   return new Promise((resolve, reject) => {
     gltfLoader.load(
       '/models/cabin-v4.glb',
@@ -118,6 +118,23 @@ export function loadCabin({ scene, gltfLoader, textureMap, loadedTextures, rayca
             door.userData.closedRotation = door.rotation.y;
             door.userData.openRotation = door.rotation.y - Math.PI / 2;
             door.userData.isOpen = false;
+          }
+          if (child.name.includes('target'))
+          {
+            // 1. Create a bright yellow bounding box around the object
+            const boxHelper = new THREE.BoxHelper(child, 0xffff00);
+
+            // 2. Hide it by default
+            boxHelper.visible = false; 
+
+            // 3. Add to scene and tracking array
+            scene.add(boxHelper);
+            highlightBoxes.push(boxHelper);
+
+            // 4. Give the actual mesh a direct reference to its own box!
+            child.userData.boundingBox = boxHelper;
+
+            child.userData.isOpen = false;
           }
         });
 
