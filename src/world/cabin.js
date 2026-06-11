@@ -22,7 +22,9 @@ export function createTextureLibrary(textureLoader) {
   };
 }
 
-export function loadCabin({ scene, gltfLoader, textureMap, loadedTextures, raycasterObjects, interactableWheels, flickeringLights, interactableFlowers, bloomLayer, door, highlightBoxes, BLOOM_SCENE }) {
+export function loadCabin({ scene, gltfLoader, textureMap, loadedTextures, raycasterObjects, 
+    interactableWheels, flickeringLights, interactableFlowers, bloomLayer, door, 
+    highlightBoxes, leftSignGroup, rightSignGroup, BLOOM_SCENE }) {
   return new Promise((resolve, reject) => {
     gltfLoader.load(
       '/models/cabin-v4.glb',
@@ -112,14 +114,14 @@ export function loadCabin({ scene, gltfLoader, textureMap, loadedTextures, rayca
             child.userData.initialRotation = child.rotation.clone();
             child.userData.targetRotationY = child.rotation.y;
           }
-          if (child.name.includes('door'))
+          if (child.name.includes('door_Third'))
           {
             door = child;
             door.userData.closedRotation = door.rotation.y;
             door.userData.openRotation = door.rotation.y - Math.PI / 2;
             door.userData.isOpen = false;
           }
-          if (child.name.includes('target'))
+          if (child.name.includes('target') && !child.name.includes('text'))
           {
             // 1. Create a bright yellow bounding box around the object
             const boxHelper = new THREE.BoxHelper(child, 0xffff00);
@@ -136,6 +138,25 @@ export function loadCabin({ scene, gltfLoader, textureMap, loadedTextures, rayca
 
             child.userData.isOpen = false;
           }
+          const nameLower = child.name.toLowerCase();
+
+            // --- ADD THIS BLOCK FOR THE SIGNS ---
+            const isLeftSign = nameLower.includes('left_sign_third') || nameLower.includes('ae_text_emit');
+            const isRightSign = nameLower.includes('right_sign_third') || nameLower.includes('blender_text_emit');
+
+            if (isLeftSign || isRightSign) {
+              // 1. Save their original transforms perfectly
+              child.userData.baseScale = child.scale.clone();
+              child.userData.baseRotation = child.rotation.clone();
+            
+              // 2. Assign the mesh to the correct group
+              const targetGroup = isLeftSign ? leftSignGroup : rightSignGroup;
+              targetGroup.meshes.push(child);
+            
+              // 3. Give the mesh a backwards link to the group so the Raycaster can find it
+              child.userData.parentGroup = targetGroup;
+            
+            }
         });
 
         scene.add(glb.scene);
@@ -170,7 +191,7 @@ export function loadCabin({ scene, gltfLoader, textureMap, loadedTextures, rayca
           }
         });
 
-        resolve({ glb, lantern, raycasterObjects, interactableWheels, flickeringLights, door });
+        resolve({ glb, lantern, raycasterObjects, flickeringLights, door });
       },
       undefined,
       reject,
