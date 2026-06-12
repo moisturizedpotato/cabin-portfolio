@@ -317,3 +317,125 @@
   pointer-events: auto;
   cursor: pointer;
 }
+
+#ae-assets-scrollbox {
+  position: fixed;
+  z-index: 8500;
+  
+  /* Positions the container exactly over the left panel */
+  top: 36%;
+  left: 0%;
+  width: 24%;
+  height: 45%; /* Adjust this so it stops before hitting the bottom timeline */
+  
+  /* Flexbox automatically stacks the items vertically */
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  
+  /* THE SCROLL MAGIC */
+  overflow-y: auto; 
+  overflow-x: hidden;
+  
+  /* Hides the ugly default web scrollbar to keep the illusion perfect */
+  scrollbar-width: none; /* Firefox */
+}
+
+#ae-assets-scrollbox::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Edge */
+}
+
+.ae-asset-item {
+  width: 100%;
+  
+  /* Your requested item height! */
+  min-height: 32px;
+  border-bottom: 1px solid #242424;
+  border-top: 1px solid #242424;
+  background-color: #292929; 
+  
+  /* Prevents items from shrinking if you add too many */
+  flex-shrink: 0; 
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0px 10px;
+  gap: 12px;
+  transition: background-color 0.2s ease;
+  
+  /* TEMPORARILY UNCOMMENT THIS TO SEE AND ALIGN YOUR HITBOXES */
+}
+
+.ae-asset-item:hover {
+  background-color: rgba(255, 255, 255, 0.1); 
+}
+
+.ae-asset-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  opacity: 0.85;
+}
+
+.ae-asset-text {
+  color: #cccccc;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+  font-size: 13px; /* Keep it relatively small like a desktop app */
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-font-smoothing: antialiased;
+}
+
+#youtube-player {
+  position: absolute;
+  top: 3.5%;
+  left: -6%;
+  width: 89%;
+  height: 89%;
+  z-index: 5; /* Keep it above the screenshot, but below UI elements if needed */
+  
+  /* CRITICAL: The parent container has pointer-events: none, 
+     so we must re-enable them here to click the YouTube video! */
+  pointer-events: auto; 
+}
+
+/* --- MOBILE DROPDOWN STYLING --- */
+#ae-mobile-dropdown {
+  display: none; /* Hidden on desktop by default */
+  position: absolute;
+  z-index: 8600;
+  
+  /* Positions the dropdown nicely at the top of the mobile screen */
+  top: 37.5%; 
+  left: 50%;
+  transform: translateX(-50%); /* Perfectly centers it */
+  width: 97%;
+  height: 7%;
+  
+  /* After Effects Dark UI Styling */
+  background-color: #292929;
+  color: #cccccc;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 12px;
+  font-family: 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px; /* 16px prevents iOS from forcibly zooming in! */
+  
+  pointer-events: auto; /* Ensures it can be tapped */
+  outline: none;
+  cursor: pointer;
+}
+
+/* --- THE RESPONSIVE SWAP --- */
+@media (max-width: 768px) {
+  #ae-assets-scrollbox {
+    display: none !important; /* Kills the desktop list on phones */
+  }
+  
+  #ae-mobile-dropdown {
+    display: block !important; /* Awakens the mobile dropdown */
+  }
+}
+

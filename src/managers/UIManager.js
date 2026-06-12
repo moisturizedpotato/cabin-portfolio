@@ -14,9 +14,15 @@ export function createUIManager() {
     aeImageOverlay: document.querySelector('#ae-image-overlay'),
     blackBgLayer: document.querySelector('#black-bg-layer'),
     screenshotContainer: document.querySelector('#screenshot-container'),
+    youtubePlayer: document.querySelector('#youtube-player'),
     playButton: document.querySelector('#play-button'),
     greyOverlay: document.querySelector('#grey-overlay'),
+    aeAssetsScrollbox: document.querySelector('#ae-assets-scrollbox'),
+    assetItems: document.querySelectorAll('.ae-asset-item'),
+    mobileDropdown: document.querySelector('#ae-mobile-dropdown'),
+    sceneScreenshot: document.querySelector('#scene-screenshot')
   };
+
 
   const setupLoadingBlocks = (blockSize) => {
     const cols = Math.ceil(window.innerWidth / blockSize);

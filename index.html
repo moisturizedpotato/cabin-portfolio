@@ -19,10 +19,34 @@
     </div>
     <div id="white-fade-overlay"></div>
     <div id="black-fade-overlay"></div>
-    <div id="ae-image-overlay"></div>
+    <div id="ae-image-overlay">
+      <div id="ae-assets-scrollbox">
+    
+        <div class="ae-asset-item" data-type="original">
+          <img src="/images/video_symbol.png" alt="Video Icon" class="ae-asset-icon">
+          <span class="ae-asset-text">my_portfolio.mp4</span>
+        </div>
+
+        <div class="ae-asset-item" data-type="youtube" data-youtube-id="AggZgbMLc4c">
+          <img src="/images/video_symbol.png" alt="Video Icon" class="ae-asset-icon">
+          <span class="ae-asset-text">ray_optics_educational_short.mp4</span>
+        </div>
+         <!-- when needed to add more videos to the ae assets, put the image in videos, copy paste the div block above
+        and just change the path and the text -->
+
+      </div>
+      <select id="ae-mobile-dropdown">
+        <option value="" disabled selected>Select a Project...</option>
+        <option value="original">my_portfolio.mp4</option>
+        
+        <option value="AggZgbMLc4c">ray_optics_educational_short.mp4</option>
+        <!-- make sure to also make it compatible with mobile devices -->
+      </select>
+    </div>
     <div id="black-bg-layer"></div>
 
     <div id="screenshot-container">
+      <iframe id="youtube-player" src="" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen style="display: none;"></iframe>
       <img id="scene-screenshot" src="/images/scene_ss.png" alt="Paused Scene">
       <div id="grey-overlay"></div>
       <div id="play-button">▶</div>

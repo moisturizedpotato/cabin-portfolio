@@ -15,6 +15,7 @@ import { createAudioManager } from './managers/AudioManager.js';
 import { createUIManager } from './managers/UIManager.js';
 import { createRaycasterManager } from './interactions/RaycasterManager.js';
 import { fadeToLinkedIn, fadeToYouTube, showAfterEffectsPreview, revertAfterEffectsPreview } from './interactions/Transitions.js';
+import { createInputHandler } from './systems/InputHandler.js';
 
 const audioManager = createAudioManager();
 const { sfx } = audioManager;
@@ -35,6 +36,9 @@ const {
   screenshotContainer,
   playButton,
   greyOverlay,
+  aeAssetsScrollbox,
+  assetItems,
+  sceneScreenshot,
 } = elements;
 const raycasterManager = createRaycasterManager();
 const { raycaster, pointer } = raycasterManager;
@@ -196,53 +200,30 @@ const PostProcessing = {
   },
 };
 
-const spawnCursorParticles = (x, y, amount, spreadX = 2, spreadY = 2) => {
-  for (let i = 0; i < amount; i++) {
-    cursorParticles.push({
-      x,
-      y,
-      size: Math.random() * 8 + 4,
-      life: 1.0,
-      velocityX: (Math.random() - 0.5) * spreadX,
-      velocityY: (Math.random() - 0.5) * spreadY - 1,
+
+// --- REVERT AFTER EFFECTS TRANSITION (PLAY BUTTON) ---
+// --- REVERT AFTER EFFECTS TRANSITION (PLAY BUTTON) ---
+
+const handlePlayButtonClick = () => {
+  if (!audioManager.isMuted()) sfx.whoosh.play();
+    revertAfterEffectsPreview({
+      aeImageOverlay,
+      screenshotContainer,
+      blackBgLayer,
+      playButton,
+      greyOverlay,
+      audioToggleBtn,
+      onComplete: () => {
+        isBreathingPaused = false;
+        raycasterObjects.forEach((obj) => {
+          obj.userData.isTransitioning = false;
+        });
+        if (door) door.userData.isAnimating = false;
+      },
     });
-  }
 };
 
-window.addEventListener('mousemove', (event) => {
-  raycasterManager.updatePointerFromEvent(event);
-  spawnCursorParticles(event.clientX, event.clientY, 2, 2, 2);
-});
-
-window.addEventListener('touchstart', (event) => {
-  raycasterManager.updatePointerFromEvent(event);
-  spawnCursorParticles(event.touches[0].clientX, event.touches[0].clientY, 5, 4, 4);
-}, { passive: false });
-
-// --- REVERT AFTER EFFECTS TRANSITION (PLAY BUTTON) ---
-// --- REVERT AFTER EFFECTS TRANSITION (PLAY BUTTON) ---
-playButton.addEventListener('click', () => {
-  if (!audioManager.isMuted()) sfx.whoosh.play();
-
-  revertAfterEffectsPreview({
-    aeImageOverlay,
-    screenshotContainer,
-    blackBgLayer,
-    playButton,
-    greyOverlay,
-    audioToggleBtn,
-    onComplete: () => {
-      isBreathingPaused = false;
-      raycasterObjects.forEach((obj) => {
-        obj.userData.isTransitioning = false;
-      });
-      if (door) door.userData.isAnimating = false;
-    },
-  });
-});
-
-// --- BACK BUTTON CLICK (ZOOM OUT LOGIC) ---
-backButton.addEventListener('click', () => {
+const handleBackButtonClick = () => {
   // 1. Prevent spam clicking
   if (door.userData.isAnimating) return;
   door.userData.isAnimating = true;
@@ -272,13 +253,78 @@ backButton.addEventListener('click', () => {
       });
     }
   });
-});
+};
 
-// --- MOBILE TOUCH INITIALIZATION ---
-window.addEventListener('touchstart', (event)=>{
-  pointer.x = (event.touches[0].clientX / sizes.width) * 2 - 1;
-  pointer.y = -(event.touches[0].clientY / sizes.height) * 2 + 1;
-}, {passive: false});
+const handleAssetItemClick = (event) => {
+
+const type = event.currentTarget.getAttribute('data-type');
+  
+  if (type === 'original') {
+    // --- REVERT TO ORIGINAL SCREENSHOT ---
+    
+    // 1. Hide the YouTube player and stop the video by clearing the src
+    uiManager.elements.youtubePlayer.style.display = 'none';
+    uiManager.elements.youtubePlayer.src = ''; 
+    
+    // 2. Bring back the screenshot, overlay, and play button
+    uiManager.elements.sceneScreenshot.style.display = 'block';
+    uiManager.elements.greyOverlay.style.display = 'block';
+    uiManager.elements.playButton.style.display = 'flex'; // Uses flex for centering!
+    
+    // 3. Update the state so the Play button reverts to the 3D scene when clicked
+    
+  } else if (type === 'youtube') {
+    // --- LOAD A YOUTUBE VIDEO ---
+    
+    // 1. Get the YouTube ID
+    const ytId = event.currentTarget.getAttribute('data-youtube-id');
+    
+    // 2. Hide the screenshot, overlay, and play button
+    uiManager.elements.sceneScreenshot.style.display = 'none';
+    uiManager.elements.greyOverlay.style.display = 'none';
+    uiManager.elements.playButton.style.display = 'none';
+    
+    // 3. Show the YouTube player and set the URL (with autoplay enabled!)
+    uiManager.elements.youtubePlayer.style.display = 'block';
+    uiManager.elements.youtubePlayer.src = `https://www.youtube.com/embed/${ytId}?autoplay=1`;
+    
+    // 4. Update the state so the Play button knows a video is active
+  }
+
+  // Play a click sound
+  if (!audioManager.isMuted()) sfx.sign.play(); 
+
+};
+
+const handleMobileDropdown = (event) =>{
+  const selectedValue = event.target.value;
+
+  if (selectedValue === 'original') {
+    // --- REVERT TO ORIGINAL SCREENSHOT ---
+    uiManager.elements.youtubePlayer.style.display = 'none';
+    uiManager.elements.youtubePlayer.src = ''; 
+    
+    uiManager.elements.sceneScreenshot.style.display = 'block';
+    uiManager.elements.greyOverlay.style.display = 'block';
+    uiManager.elements.playButton.style.display = 'flex'; 
+  
+    
+  } else {
+    // --- LOAD THE YOUTUBE VIDEO ---
+    uiManager.elements.sceneScreenshot.style.display = 'none';
+    uiManager.elements.greyOverlay.style.display = 'none';
+    uiManager.elements.playButton.style.display = 'none';
+    
+    uiManager.elements.youtubePlayer.style.display = 'block';
+    
+    // We plug the selectedValue directly into the YouTube URL!
+    uiManager.elements.youtubePlayer.src = `https://www.youtube.com/embed/${selectedValue}?autoplay=1`;
+  }
+
+  if (!audioManager.isMuted()) sfx.sign.play();
+}
+
+
 
 // --- 3D RAYCASTER LOGIC (ZOOM IN LOGIC) ---
 function handleRaycasterInteraction() {
@@ -428,6 +474,8 @@ function handleRaycasterInteraction() {
       if (object.userData.boundingBox) object.userData.boundingBox.visible = false;
       if (!audioManager.isMuted()) sfx.whoosh.play();
 
+      sceneScreenshot.style.display = 'block';
+
       isBreathingPaused = true;
       showAfterEffectsPreview({
         aeImageOverlay,
@@ -448,15 +496,6 @@ function handleRaycasterInteraction() {
   }
 }
 
-// --- CLICK BINDINGS ---
-window.addEventListener('touchend', (event)=>{
-
-  if (event.target === backButton || event.target === audioToggleBtn || event.target === playButton) return;
-  event.preventDefault();
-  handleRaycasterInteraction();
-}, {passive: false}); 
-
-window.addEventListener('click', handleRaycasterInteraction);
 adjustCameraForScreen();
 
 const textureLoader = new THREE.TextureLoader();
@@ -468,22 +507,38 @@ dracoLoader.setDecoderPath('/draco/');
 const gltfLoader = new GLTFLoader(loadingManager);
 gltfLoader.setDRACOLoader(dracoLoader);
 
-window.addEventListener('resize', () => {
-  sizes.width = window.innerWidth;
-  sizes.height = window.innerHeight;
+const inputHandler = createInputHandler({
+  cursorParticles,
+  elements,
+  onInteraction: {
+    updatePointer: (nextPointer) => {
+      pointer.x = nextPointer.x;
+      pointer.y = nextPointer.y;
+    },
+    handle: handleRaycasterInteraction,
+  },
+  onResize: () => {
+    sizes.width = window.innerWidth;
+    sizes.height = window.innerHeight;
 
-  resizeCamera(camera, sizes);
-  adjustCameraForScreen();
+    resizeCamera(camera, sizes);
+    adjustCameraForScreen();
 
-  renderer.setSize(sizes.width, sizes.height);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(sizes.width, sizes.height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-  resizePostProcessing(sizes.width, sizes.height);
+    resizePostProcessing(sizes.width, sizes.height);
 
-  // Update 2D Canvas size
-  cursorCanvas.width = window.innerWidth;
-  cursorCanvas.height = window.innerHeight;
+    cursorCanvas.width = window.innerWidth;
+    cursorCanvas.height = window.innerHeight;
+  },
+  onPlayButtonClick: handlePlayButtonClick,
+  onBackButtonClick: handleBackButtonClick,
+  onAssetItemClick: handleAssetItemClick,
+  onMobileDropdown: handleMobileDropdown
 });
+
+inputHandler.bind();
 
 // --- GSAP ANIMATION LOGIC ---
 const playSignHoverEnter = (group) => {
