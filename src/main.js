@@ -10,29 +10,35 @@ import { createRenderer, createPostProcessing } from './systems/renderer.js';
 import { createTextureLibrary, loadCabin } from './world/cabin.js';
 import { loadEnvironment } from './world/environment.js';
 import { createFireflies } from './world/fireflies.js';
-import { Howl, Howler } from 'howler';
 
-// --- HOWLER AUDIO MANAGER ---
-const sfx = {
-  flower1:      new Howl({ src: ['/audio/flower_1_sfx.mp3'] }),
-  flower2:      new Howl({ src: ['/audio/flower_2_sfx.mp3'] }),
-  flower3:      new Howl({ src: ['/audio/flower_3_sfx.mp3'] }),
-  tyre:         new Howl({ src: ['/audio/tyre_hovered_sfx.mp3'], volume: 0.2 }),
-  whoosh:       new Howl({ src: ['/audio/camera_move_whoosh_sfx.mp3'] }),
-  flicker:      new Howl({ src: ['/audio/flickering_light_sfx.mp3'] }),
-  window:       new Howl({ src: ['/audio/window_inside_hover_sfx.mp3'], volume: 0.3 }),
-  sign:         new Howl({ src: ['/audio/sign_left_right_hover_sfx.mp3'], volume: 0.3 }),
-  door_opening: new Howl({ src: ['/audio/door_opening_sfx.mp3'] }),
-  door_closing: new Howl({ src: ['/audio/door_closing_sfx.mp3'] }),
-  
-  bgm: new Howl({ 
-    src: ['/audio/background_looping_sfx.mp3'], 
-    loop: true, 
-    volume: 0.2 
-  })
-};
+import { createAudioManager } from './managers/AudioManager.js';
+import { createUIManager } from './managers/UIManager.js';
+import { createRaycasterManager } from './interactions/RaycasterManager.js';
+import { fadeToLinkedIn, fadeToYouTube, showAfterEffectsPreview, revertAfterEffectsPreview } from './interactions/Transitions.js';
 
-let isAudioMuted = true;
+const audioManager = createAudioManager();
+const { sfx } = audioManager;
+const uiManager = createUIManager();
+const { elements } = uiManager;
+const {
+  loadingScreen,
+  loadingBar,
+  loadingText,
+  blocksContainer,
+  backButton,
+  whiteOverlay,
+  githubBubble,
+  audioToggleBtn,
+  blackOverlay,
+  aeImageOverlay,
+  blackBgLayer,
+  screenshotContainer,
+  playButton,
+  greyOverlay,
+} = elements;
+const raycasterManager = createRaycasterManager();
+const { raycaster, pointer } = raycasterManager;
+
 let lastHoveredObjectName = null;
 
 const canvas = document.querySelector('#experience-canvas');
@@ -43,44 +49,12 @@ const ctx = cursorCanvas.getContext('2d');
 cursorCanvas.width = sizes.width;
 cursorCanvas.height = sizes.height;
 
-const loadingScreen = document.querySelector('#loading-screen');
-const loadingBar = document.querySelector('#loading-bar');
-const loadingText = document.querySelector('#loading-text');
-const blocksContainer = document.querySelector('#loading-blocks');
-const backButton = document.querySelector('#back-button');
-const whiteOverlay = document.querySelector('#white-fade-overlay');
-const githubBubble = document.querySelector('#github-bubble');
-const audioToggleBtn = document.querySelector('#audio-toggle');
-const blackOverlay = document.querySelector('#black-fade-overlay');
-const aeImageOverlay = document.querySelector('#ae-image-overlay');
-const blackBgLayer = document.querySelector('#black-bg-layer');
-const screenshotContainer = document.querySelector('#screenshot-container');
-const playButton = document.querySelector('#play-button');
-const greyOverlay = document.querySelector('#grey-overlay');
-
-Howler.mute(true);
-audioToggleBtn.addEventListener('click', () => {
-  isAudioMuted = !isAudioMuted;
-  
-  if (isAudioMuted) {
-    audioToggleBtn.innerText = "SOUND: OFF";
-    Howler.mute(true); // Instantly mutes EVERYTHING
-  } else {
-    audioToggleBtn.innerText = "SOUND: ON";
-    Howler.mute(false); // Instantly unmutes EVERYTHING
-    
-    // Only call play() on the BGM if it isn't already playing
-    if (!sfx.bgm.playing()) {
-      sfx.bgm.play();
-    }
-  }
-});
+uiManager.bindBasicUIEvents();
+const { cols, rows } = uiManager.setupLoadingBlocks(60);
 
 const scene = new THREE.Scene();
 const raycasterObjects = [];
 let currentIntersects = [];
-const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
 const clock = new THREE.Clock();
 const loadingManager = new THREE.LoadingManager();
 
@@ -97,19 +71,6 @@ let currentlyHoveredSignGroup = null;
 let lantern = null;
 let door = null;
 const blockSize = 60;
-
-const cols = Math.ceil(window.innerWidth / blockSize);
-const rows = Math.ceil(window.innerHeight / blockSize);
-const totalBlocks = cols * rows;
-
-blocksContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-blocksContainer.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
-
-for (let i = 0; i < totalBlocks; i++) {
-  const block = document.createElement('div');
-  block.classList.add('loading-block');
-  blocksContainer.appendChild(block);
-}
 
 loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
   const progress = (itemsLoaded / itemsTotal) * 100;
@@ -167,126 +128,116 @@ controls.enabled = false;
 controls.autoRotate = false;
 controls.target.set(0.021063226292135844, defaultTargetY - 3.0, 0.05102530852447889);
 
-window.addEventListener('mousemove', (event) => {
-  pointer.x = (event.clientX / sizes.width) * 2 - 1;
-  pointer.y = -(event.clientY / sizes.height) * 2 + 1;
+const CabinEnvironment = {
+  updateLights(elapsedTime) {
+    if (lantern) {
+      lantern.rotation.x = Math.sin(elapsedTime * 2.0) * 0.25;
+    }
 
-  for (let i = 0; i < 2; i++) {
-    cursorParticles.push({
-      x: event.clientX,
-      y: event.clientY,
-      size: Math.random() * 8 + 4, // Random square size between 4px and 12px
-      life: 1.0, // 100% opacity
-      velocityX: (Math.random() - 0.5) * 2, // Drift left/right
-      velocityY: (Math.random() - 0.5) * 2 - 1 // Drift slightly upward
+    flickeringLights.forEach((light) => {
+      light.isFlickering = false;
+      const noise = Math.sin((elapsedTime + light.offset) * 5) + Math.sin((elapsedTime + light.offset) * 8.5);
+
+      if (noise < -1.98) {
+        light.material.emissiveIntensity = 0;
+        if (!light.isFlickering) {
+          sfx.flicker.play();
+          light.isFlickering = true;
+        }
+      } else {
+        light.material.emissiveIntensity = light.baseIntensity * (0.8 + Math.random() * 0.2);
+        light.isFlickering = false;
+      }
     });
-  }
-});
+  },
 
-// --- BACK BUTTON HOVER ANIMATION ---
-backButton.addEventListener('mouseenter', () => {
-  gsap.to(backButton, {
-    y: -8, // Bounce up 8 pixels
-    duration: 0.4,
-    ease: "back.out(2)" // Juicy elastic bounce
-  });
-});
+  updateMaterials() {
+    interactableWheels.forEach((wheel) => {
+      wheel.userData.targetRotationY = wheel.userData.initialRotation.y;
+    });
 
-backButton.addEventListener('mouseleave', () => {
-  gsap.to(backButton, {
-    y: 0, // Return to resting position
-    duration: 0.4,
-    ease: "power2.out"
-  });
-});
+    interactableFlowers.forEach((flower) => {
+      flower.userData.targetIntensity = flower.userData.baseIntensity;
+    });
 
-window.addEventListener('touchstart', (event)=>{
-  pointer.x = (event.touches[0].clientX / sizes.width) * 2 - 1;
-  pointer.y = -(event.touches[0].clientY / sizes.height) * 2 + 1;
+    highlightBoxes.forEach((box) => {
+      box.visible = false;
+      box.update();
+    });
+  },
+};
 
-  for (let i = 0; i < 5; i++) {
+const RaycasterManager = {
+  update(pointer, camera) {
+    raycaster.setFromCamera(pointer, camera);
+    currentIntersects = raycaster.intersectObjects(raycasterObjects);
+
+    document.body.style.cursor = currentIntersects.length > 0 && currentIntersects[0].object.name.includes('target')
+      ? 'pointer'
+      : 'default';
+
+    return currentIntersects;
+  },
+};
+
+const PostProcessing = {
+  render() {
+    const currentBackground = scene.background;
+    scene.background = darkBackground;
+    scene.traverse(darkenNonBloomed);
+    scene.updateMatrixWorld(true);
+
+    bloomComposer.render();
+
+    scene.background = currentBackground;
+    scene.traverse(restoreMaterial);
+
+    finalComposer.render();
+  },
+};
+
+const spawnCursorParticles = (x, y, amount, spreadX = 2, spreadY = 2) => {
+  for (let i = 0; i < amount; i++) {
     cursorParticles.push({
-      x: event.touches[0].clientX,
-      y: event.touches[0].clientY,
+      x,
+      y,
       size: Math.random() * 8 + 4,
       life: 1.0,
-      velocityX: (Math.random() - 0.5) * 4, // Wider spread for tap burst
-      velocityY: (Math.random() - 0.5) * 4 
+      velocityX: (Math.random() - 0.5) * spreadX,
+      velocityY: (Math.random() - 0.5) * spreadY - 1,
     });
   }
-  },
-  {passive: false}
-);
+};
 
-// --- CURSOR PARTICLES ---
 window.addEventListener('mousemove', (event) => {
-  pointer.x = (event.clientX / sizes.width) * 2 - 1;
-  pointer.y = -(event.clientY / sizes.height) * 2 + 1;
-
-  for (let i = 0; i < 2; i++) {
-    cursorParticles.push({
-      x: event.clientX,
-      y: event.clientY,
-      size: Math.random() * 8 + 4,
-      life: 1.0, 
-      velocityX: (Math.random() - 0.5) * 2, 
-      velocityY: (Math.random() - 0.5) * 2 - 1 
-    });
-  }
+  raycasterManager.updatePointerFromEvent(event);
+  spawnCursorParticles(event.clientX, event.clientY, 2, 2, 2);
 });
 
-// --- BACK BUTTON HOVER ANIMATION ---
-backButton.addEventListener('mouseenter', () => {
-  gsap.to(backButton, { y: -8, duration: 0.4, ease: "back.out(2)" });
-});
-
-backButton.addEventListener('mouseleave', () => {
-  gsap.to(backButton, { y: 0, duration: 0.4, ease: "power2.out" });
-});
+window.addEventListener('touchstart', (event) => {
+  raycasterManager.updatePointerFromEvent(event);
+  spawnCursorParticles(event.touches[0].clientX, event.touches[0].clientY, 5, 4, 4);
+}, { passive: false });
 
 // --- REVERT AFTER EFFECTS TRANSITION (PLAY BUTTON) ---
+// --- REVERT AFTER EFFECTS TRANSITION (PLAY BUTTON) ---
 playButton.addEventListener('click', () => {
-  
-  // Optional: Play a sound effect when they click play!
-  if (!isAudioMuted) sfx.whoosh.play();
+  if (!audioManager.isMuted()) sfx.whoosh.play();
 
-  // 1. Instantly hide the play button and grey overlay
-  gsap.to([playButton, greyOverlay], { opacity: 0, duration: 0.2 });
-
-  // 2. Slide the AE UI back down off the screen
-  gsap.to(aeImageOverlay, {
-    yPercent: 100, 
-    duration: 1.5,
-    ease: "power3.inOut"
-  });
-
-  // 3. Expand the screenshot back to full screen
-  gsap.to(screenshotContainer, {
-    scale: 1,   // Back to 100% size
-    x: "0%",    // Centered
-    y: "0%",    // Centered
-    duration: 1.5,
-    ease: "power3.inOut",
+  revertAfterEffectsPreview({
+    aeImageOverlay,
+    screenshotContainer,
+    blackBgLayer,
+    playButton,
+    greyOverlay,
+    audioToggleBtn,
     onComplete: () => {
-      
-      // 4. THE SWITCH: Hide the 2D fake layers to reveal the 3D canvas underneath!
-      gsap.set([blackBgLayer, screenshotContainer], { opacity: 0 });
-      
-      // Reset the play button and grey overlay so they are ready for the next time
-      gsap.set([playButton, greyOverlay], { opacity: 1 });
-
-      // 5. Unfreeze the 3D Camera!
       isBreathingPaused = false;
-
-      // 6. Unlock the scene so the user can interact with objects again
-      raycasterObjects.forEach(obj => obj.userData.isTransitioning = false);
+      raycasterObjects.forEach((obj) => {
+        obj.userData.isTransitioning = false;
+      });
       if (door) door.userData.isAnimating = false;
-
-      // 7. Bring back the main UI buttons
-      gsap.to(audioToggleBtn, { opacity: 1, duration: 0.5 });
-      // (Only bring back the back button if you want it visible from the main view)
-      // gsap.to(backButton, { opacity: 1, duration: 0.5 }); 
-    }
+    },
   });
 });
 
@@ -409,30 +360,21 @@ function handleRaycasterInteraction() {
       walkThroughPos.y = basePosition.y; // Keep the camera perfectly level!
 
       sfx.whoosh.play();
-      // 4. THE CAMERA SPRINT
       gsap.to(basePosition, {
         x: walkThroughPos.x,
         y: walkThroughPos.y,
         z: walkThroughPos.z,
         duration: 2.0,
-        ease: "power2.in", // 'power2.in' makes it start slow and accelerate!
-        overwrite: true
+        ease: 'power2.in',
+        overwrite: true,
       });
 
-      // 5. THE WHITE FADE & REDIRECT
-      gsap.to(whiteOverlay, {
-        opacity: 1,          // Fade to pure white
-        duration: 1.5,       // Take 1.5 seconds to fade
-        delay: 0.5,          // Wait 0.5 seconds before the fade starts so we see the camera move first
-        ease: "power1.inOut",
-        onStart: () => {
-          // Hide the back button immediately so it doesn't float over the white screen
-          gsap.to(backButton, { opacity: 0, duration: 0.2 });
-        },
+      fadeToYouTube({
+        whiteOverlay,
+        backButton,
         onComplete: () => {
-          // 6. THE REDIRECT: Once the screen is 100% white, change the page!
-          window.location.href = "https://www.youtube.com";
-        }
+          window.location.href = 'https://www.youtube.com';
+        },
       });
     }
     // --- LINKEDIN PAN RIGHT & FADE TO BLACK ---
@@ -448,8 +390,7 @@ function handleRaycasterInteraction() {
          object.userData.boundingBox.visible = false;
       }
 
-      // 3. Play the whoosh sound effect
-      if (!isAudioMuted) sfx.whoosh.play();
+      if (!audioManager.isMuted()) sfx.whoosh.play();
 
       // 4. THE CAMERA SLIDE (Pan Right)
       // We add +4.0 to the X axis to slide the camera physically to the right
@@ -468,20 +409,13 @@ function handleRaycasterInteraction() {
         overwrite: true
       });
 
-      // 5. THE BLACK FADE & REDIRECT
-      gsap.to(blackOverlay, {
-        opacity: 1,
-        duration: 1.0,       // Takes 1 second to fade to black
-        ease: "power2.inOut",
-        onStart: () => {
-          // Hide the UI buttons so they don't float over the black screen
-          gsap.to(backButton, { opacity: 0, duration: 0.2 });
-          gsap.to(audioToggleBtn, { opacity: 0, duration: 0.2 });
-        },
+      fadeToLinkedIn({
+        blackOverlay,
+        backButton,
+        audioToggleBtn,
         onComplete: () => {
-          // 6. REDIRECT: Once the screen is pitch black, load LinkedIn!
-          window.location.href = "https://www.linkedin.com";
-        }
+          window.location.href = 'https://www.linkedin.com';
+        },
       });
     }
     // --- AFTER EFFECTS TRANSITION (LEFT SIGN) ---
@@ -492,30 +426,17 @@ function handleRaycasterInteraction() {
       if (door) door.userData.isAnimating = true; 
 
       if (object.userData.boundingBox) object.userData.boundingBox.visible = false;
-      if (!isAudioMuted) sfx.whoosh.play();
+      if (!audioManager.isMuted()) sfx.whoosh.play();
 
-   // 1. Freeze the camera breathing
       isBreathingPaused = true;
-
-      gsap.set([blackBgLayer, screenshotContainer], { opacity: 1 });
-
-      // 2. Slide up the AE Image Overlay
-      gsap.to(aeImageOverlay, {
-        yPercent: 0,
-        y: 0, // Slide to top
-        duration: 1.5,
-        ease: "power3.inOut",
-        onStart: () => {
-          gsap.to(backButton, { opacity: 0, duration: 0.2 });
-          gsap.to(audioToggleBtn, { opacity: 0, duration: 0.2 });
-        }
-      });
-      gsap.to(screenshotContainer, {
-        scale: 0.5,   // Shrinks the image down to 45% of its size
-        x: "10%",      // Shifts it slightly to the right
-        y: "-13%",      // Shifts it slightly up
-        duration: 1.5, // Match the duration of the UI sliding up
-        ease: "power3.inOut" // Match the easing so they move completely in sync
+      showAfterEffectsPreview({
+        aeImageOverlay,
+        screenshotContainer,
+        blackBgLayer,
+        playButton,
+        greyOverlay,
+        backButton,
+        audioToggleBtn,
       });
     }
     if (object.name.includes("window_inside"))
@@ -530,7 +451,7 @@ function handleRaycasterInteraction() {
 // --- CLICK BINDINGS ---
 window.addEventListener('touchend', (event)=>{
 
-  if (event.target === backButton || event.target === audioToggleBtn) return;
+  if (event.target === backButton || event.target === audioToggleBtn || event.target === playButton) return;
   event.preventDefault();
   handleRaycasterInteraction();
 }, {passive: false}); 
@@ -629,21 +550,17 @@ async function init() {
   const fireflies = createFireflies(scene, 1, 75);
 
   const render = () => {
+    const elapsedTime = clock.getElapsedTime();
 
     // --- 2D CURSOR ANIMATION ---
     ctx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
 
     for (let i = cursorParticles.length - 1; i >= 0; i--) {
       const p = cursorParticles[i];
-
-      // Move the particle
       p.x += p.velocityX;
       p.y += p.velocityY;
-      
-      // Fade it out
       p.life -= 0.03;
 
-      // If it's dead, remove it from the array
       if (p.life <= 0) {
         cursorParticles.splice(i, 1);
         continue;
@@ -653,52 +570,13 @@ async function init() {
       const currentSize = p.size * p.life;
       ctx.fillRect(p.x, p.y, currentSize, currentSize);
     }
-    const elapsedTime = clock.getElapsedTime();
 
     fireflies.update(elapsedTime);
-
-    if (lantern) {
-      const swingSpeed = 2.0;
-      const swingAngle = 0.25;
-      lantern.rotation.x = Math.sin(elapsedTime * swingSpeed) * swingAngle;
-    }
-
-    flickeringLights.forEach((light) => {
-      light.isFlickering = false;
-      const noise = Math.sin((elapsedTime + light.offset) * 5) + Math.sin((elapsedTime + light.offset) * 8.5);
-
-      if (noise < -1.98) {
-        light.material.emissiveIntensity = 0;
-        if (!light.isFlickering) {
-          sfx.flicker.play();
-          light.isFlickering = true;
-        }
-      } else {
-        light.material.emissiveIntensity = light.baseIntensity * (0.8 + Math.random() * 0.2);
-        light.isFlickering = false;
-      }
-    });
-
+    CabinEnvironment.updateLights(elapsedTime);
     updateCameraBreathing(elapsedTime, cameraLookTarget, isBreathingPaused, cameraLookTarget);
+    RaycasterManager.update(pointer, camera);
 
-    raycaster.setFromCamera(pointer, camera);
-    currentIntersects = raycaster.intersectObjects(raycasterObjects);
-
-    interactableWheels.forEach(wheel => {
-    wheel.userData.targetRotationY = wheel.userData.initialRotation.y;
-    });
-
-    interactableFlowers.forEach(flower => {
-    flower.userData.targetIntensity = flower.userData.baseIntensity;
-    });
-
-    highlightBoxes.forEach(box => {
-    box.visible = false;
-    
-    // IMPORTANT: Tell the box to recalculate its position in case 
-    // the door it is attached to is currently swinging open/closed!
-    box.update(); 
-    });
+    CabinEnvironment.updateMaterials();
 
     githubBubble.style.opacity = '0';
     
@@ -782,36 +660,20 @@ async function init() {
     }
     targetRotation = door.userData.isOpen ? door.userData.openRotation : door.userData.closedRotation;
 
-    document.body.style.cursor = currentIntersects.length > 0 && currentIntersects[0].object.name.includes('target')
-      ? 'pointer'
-      : 'default';
-
-    interactableWheels.forEach(wheel => {
-    // Lerp (Linear Interpolation) creates a buttery smooth movement
-    const turnSpeed = 0.1;
-    wheel.rotation.y += (wheel.userData.targetRotationY - wheel.rotation.y) * turnSpeed;
+    interactableWheels.forEach((wheel) => {
+      const turnSpeed = 0.1;
+      wheel.rotation.y += (wheel.userData.targetRotationY - wheel.rotation.y) * turnSpeed;
     });
 
-    interactableFlowers.forEach(flower => {
-    const glowSpeed = 0.1; // How fast the glow swells and fades
-    // Lerp the material's emissive intensity
-    flower.material.emissiveIntensity += (flower.userData.targetIntensity - flower.material.emissiveIntensity) * glowSpeed;
+    interactableFlowers.forEach((flower) => {
+      const glowSpeed = 0.1;
+      flower.material.emissiveIntensity += (flower.userData.targetIntensity - flower.material.emissiveIntensity) * glowSpeed;
     });
 
-    const swingSpeed = 0.05; // Lower number = slower, heavier door swing
+    const swingSpeed = 0.05;
     door.rotation.y += (targetRotation - door.rotation.y) * swingSpeed;
 
-    const currentBackground = scene.background;
-    scene.background = darkBackground;
-    scene.traverse(darkenNonBloomed);
-    scene.updateMatrixWorld(true);
-
-    bloomComposer.render();
-
-    scene.background = currentBackground;
-    scene.traverse(restoreMaterial);
-
-    finalComposer.render();
+    PostProcessing.render();
 
     window.requestAnimationFrame(render);
   };
@@ -819,4 +681,12 @@ async function init() {
   render();
 }
 
-init();
+const startExperience = () => {
+  init();
+};
+
+if (typeof window.requestIdleCallback === 'function') {
+  window.requestIdleCallback(startExperience, { timeout: 1500 });
+} else {
+  window.setTimeout(startExperience, 200);
+}

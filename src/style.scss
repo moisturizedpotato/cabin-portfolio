@@ -235,20 +235,23 @@
   width: 100vw;
   height: 100vh;
   z-index: 8000;
-  
+
   /* Point this to wherever you saved your transparent PNG */
-  background-image: url('/images/ae.png'); 
+  background-image: url('/images/ae.png');
   background-size: cover;      /* Stretches to fit the screen */
   background-position: center; /* Keeps the hole centered */
   background-repeat: no-repeat;
-  
+
   /* CRITICAL: This lets mouse clicks pass through the image to your 3D canvas! */
-  pointer-events: none; 
-  
+  pointer-events: none;
+
   /* Start hidden off the bottom of the screen */
   transform: translateY(100%);
-}
 
+  @media (max-width: 768px) {
+    background-image: url('/images/ae_ss_phone.png');
+  }
+}
 
 #black-bg-layer {
   position: fixed;

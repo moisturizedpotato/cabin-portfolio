@@ -11,24 +11,37 @@ export function loadEnvironment(scene, manager) {
   scene.background = previewTexture;
   scene.backgroundIntensity = 0.4;
 
-  const exrLoader = new EXRLoader(manager);
-  exrLoader.setDataType(THREE.HalfFloatType);
+  const loadHighQualityEnvironment = () => {
+    const exrLoader = new EXRLoader(manager);
+    exrLoader.setDataType(THREE.HalfFloatType);
 
-  exrLoader.load(
-    '/images/night_sky-v2.exr',
-    (texture) => {
-      texture.mapping = THREE.EquirectangularReflectionMapping;
-      scene.environment = texture;
-      scene.background = texture;
-      scene.backgroundIntensity = 1;
-      scene.backgroundRotation.y = Math.PI / 32;
-      scene.backgroundRotation.z = Math.PI / 16 + Math.PI / 32;
-    },
-    undefined,
-    (error) => {
-      console.warn('EXR environment load failed, using preview texture instead.', error);
-    },
-  );
+    exrLoader.load(
+      '/images/night_sky-v2.exr',
+      (texture) => {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        scene.environment = texture;
+        scene.background = texture;
+        scene.backgroundIntensity = 1;
+        scene.backgroundRotation.y = Math.PI / 32;
+        scene.backgroundRotation.z = Math.PI / 16 + Math.PI / 32;
+      },
+      undefined,
+      (error) => {
+        console.warn('EXR environment load failed, using preview texture instead.', error);
+      },
+    );
+  };
+
+  const scheduleEnvironmentLoad = () => {
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(() => loadHighQualityEnvironment(), { timeout: 2000 });
+      return;
+    }
+
+    window.setTimeout(loadHighQualityEnvironment, 1500);
+  };
+
+  scheduleEnvironmentLoad();
 
   return Promise.resolve(previewTexture);
 }
