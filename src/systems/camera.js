@@ -12,13 +12,19 @@ export function createCamera(sizes) {
     camera.setFocalLength(sizes.width < 768 ? 30 : 35);
   }
 
-  function updateCameraBreathing(elapsedTime, target) {
+  function updateCameraBreathing(elapsedTime, target, isBreathingPaused, cameraLookTarget) {
     const breathSpeed = 1.5;
     const verticalAmplitude = 0.01;
     const swayAmplitude = 0.012;
 
+    if (isBreathingPaused) {
+    camera.lookAt(cameraLookTarget);
+    return; 
+    }
+
     camera.position.y = basePosition.y + Math.sin(elapsedTime * breathSpeed) * verticalAmplitude;
     camera.position.x = basePosition.x + Math.cos(elapsedTime * (breathSpeed * 0.5)) * swayAmplitude;
+    camera.position.z = basePosition.z;
     camera.lookAt(target);
   }
 

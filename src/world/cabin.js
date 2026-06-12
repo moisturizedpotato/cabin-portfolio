@@ -191,7 +191,7 @@ export function loadCabin({ scene, gltfLoader, textureMap, loadedTextures, rayca
           }
         });
 
-        resolve({ glb, lantern, raycasterObjects, flickeringLights, door });
+        resolve({ glb, lantern, raycasterObjects, door });
       },
       undefined,
       reject,

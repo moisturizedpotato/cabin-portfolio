@@ -146,3 +146,171 @@
   /* Ensures the scaling animations shrink to the center of the image */
   transform-origin: center center;
 }
+
+#white-fade-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #ffffff;
+  
+  /* Start completely invisible */
+  opacity: 0; 
+  pointer-events: none; /* So it doesn't block clicks */
+  
+  /* High z-index to cover the 3D canvas and UI */
+  z-index: 9000; 
+}
+
+#github-bubble {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 6px 12px;
+  background-color: rgba(0, 0, 0, 0.85); /* Semi-transparent black */
+  color: #ffffff;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  font-weight: bold;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  
+  /* Centers the bubble horizontally and pushes it up so it floats ABOVE the object */
+  transform: translate(-50%, -100%); 
+  
+  /* Starts invisible and unclickable */
+  opacity: 0;
+  pointer-events: none !important;
+  transition: opacity 0.3s ease-out;
+  z-index: 5000;
+  
+}
+
+/* Optional: Add a little hover glow for the bubble itself! */
+#github-bubble:hover {
+  background-color: #000000;
+  border-color: #ffffff;
+}
+
+#audio-toggle {
+  position: fixed;
+  top: 30px;
+  right: 30px;
+  color: #ffffff;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 10000;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.5);
+  transition: all 0.2s ease;
+}
+
+#audio-toggle:hover {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+#black-fade-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #000000; /* Pure black */
+  
+  opacity: 0; 
+  pointer-events: none; 
+  z-index: 9000; 
+}
+
+#ae-image-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 8000;
+  
+  /* Point this to wherever you saved your transparent PNG */
+  background-image: url('/images/ae.png'); 
+  background-size: cover;      /* Stretches to fit the screen */
+  background-position: center; /* Keeps the hole centered */
+  background-repeat: no-repeat;
+  
+  /* CRITICAL: This lets mouse clicks pass through the image to your 3D canvas! */
+  pointer-events: none; 
+  
+  /* Start hidden off the bottom of the screen */
+  transform: translateY(100%);
+}
+
+
+#black-bg-layer {
+  position: fixed;
+  top: 0; 
+  left: 0; 
+  width: 100vw; 
+  height: 100vh;
+  background-color: #000000;
+  z-index: 7000; /* Above the canvas, below the screenshot */
+  opacity: 0; 
+  pointer-events: none;
+}
+
+#screenshot-container {
+  position: fixed;
+  top: 0; 
+  left: 0; 
+  width: 100vw; 
+  height: 100vh;
+  z-index: 7500; /* Above the black layer, below the AE UI (8000) */
+  opacity: 0; 
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
+  /* CRITICAL: Sets the anchor point for the GSAP scale animation */
+  transform-origin: center center; 
+}
+
+#scene-screenshot {
+  position: absolute;
+  top: 0; 
+  left: 0; 
+  width: 100%; 
+  height: 100%;
+  object-fit: cover; /* Ensures the screenshot fills the screen exactly like the 3D camera did */
+}
+
+#grey-overlay {
+  position: absolute;
+  top: 0; 
+  left: 0; 
+  width: 100%; 
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* 50% transparent black/grey */
+}
+
+#play-button {
+  position: relative;
+  z-index: 2;
+  font-size: 60px;
+  color: white;
+  background-color: rgba(0, 0, 0, 0.7);
+  border: 4px solid white;
+  border-radius: 50%;
+  width: 120px; 
+  height: 120px;
+  display: flex; 
+  justify-content: center; 
+  align-items: center;
+  padding-left: 8px; /* Optically centers the triangle */
+  pointer-events: auto;
+  cursor: pointer;
+}

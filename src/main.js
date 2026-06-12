@@ -10,6 +10,30 @@ import { createRenderer, createPostProcessing } from './systems/renderer.js';
 import { createTextureLibrary, loadCabin } from './world/cabin.js';
 import { loadEnvironment } from './world/environment.js';
 import { createFireflies } from './world/fireflies.js';
+import { Howl, Howler } from 'howler';
+
+// --- HOWLER AUDIO MANAGER ---
+const sfx = {
+  flower1:      new Howl({ src: ['/audio/flower_1_sfx.mp3'] }),
+  flower2:      new Howl({ src: ['/audio/flower_2_sfx.mp3'] }),
+  flower3:      new Howl({ src: ['/audio/flower_3_sfx.mp3'] }),
+  tyre:         new Howl({ src: ['/audio/tyre_hovered_sfx.mp3'], volume: 0.2 }),
+  whoosh:       new Howl({ src: ['/audio/camera_move_whoosh_sfx.mp3'] }),
+  flicker:      new Howl({ src: ['/audio/flickering_light_sfx.mp3'] }),
+  window:       new Howl({ src: ['/audio/window_inside_hover_sfx.mp3'], volume: 0.3 }),
+  sign:         new Howl({ src: ['/audio/sign_left_right_hover_sfx.mp3'], volume: 0.3 }),
+  door_opening: new Howl({ src: ['/audio/door_opening_sfx.mp3'] }),
+  door_closing: new Howl({ src: ['/audio/door_closing_sfx.mp3'] }),
+  
+  bgm: new Howl({ 
+    src: ['/audio/background_looping_sfx.mp3'], 
+    loop: true, 
+    volume: 0.2 
+  })
+};
+
+let isAudioMuted = true;
+let lastHoveredObjectName = null;
 
 const canvas = document.querySelector('#experience-canvas');
 const sizes = { width: window.innerWidth, height: window.innerHeight };
@@ -24,6 +48,33 @@ const loadingBar = document.querySelector('#loading-bar');
 const loadingText = document.querySelector('#loading-text');
 const blocksContainer = document.querySelector('#loading-blocks');
 const backButton = document.querySelector('#back-button');
+const whiteOverlay = document.querySelector('#white-fade-overlay');
+const githubBubble = document.querySelector('#github-bubble');
+const audioToggleBtn = document.querySelector('#audio-toggle');
+const blackOverlay = document.querySelector('#black-fade-overlay');
+const aeImageOverlay = document.querySelector('#ae-image-overlay');
+const blackBgLayer = document.querySelector('#black-bg-layer');
+const screenshotContainer = document.querySelector('#screenshot-container');
+const playButton = document.querySelector('#play-button');
+const greyOverlay = document.querySelector('#grey-overlay');
+
+Howler.mute(true);
+audioToggleBtn.addEventListener('click', () => {
+  isAudioMuted = !isAudioMuted;
+  
+  if (isAudioMuted) {
+    audioToggleBtn.innerText = "SOUND: OFF";
+    Howler.mute(true); // Instantly mutes EVERYTHING
+  } else {
+    audioToggleBtn.innerText = "SOUND: ON";
+    Howler.mute(false); // Instantly unmutes EVERYTHING
+    
+    // Only call play() on the BGM if it isn't already playing
+    if (!sfx.bgm.playing()) {
+      sfx.bgm.play();
+    }
+  }
+});
 
 const scene = new THREE.Scene();
 const raycasterObjects = [];
@@ -67,6 +118,7 @@ loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
 };
 
 const { camera, basePosition, adjustCameraForScreen, updateCameraBreathing } = createCamera(sizes);
+let isBreathingPaused = false;
 
 const defaultTargetY = 1.283590828652241;
 
@@ -151,6 +203,17 @@ backButton.addEventListener('mouseleave', () => {
 window.addEventListener('touchstart', (event)=>{
   pointer.x = (event.touches[0].clientX / sizes.width) * 2 - 1;
   pointer.y = -(event.touches[0].clientY / sizes.height) * 2 + 1;
+
+  for (let i = 0; i < 5; i++) {
+    cursorParticles.push({
+      x: event.touches[0].clientX,
+      y: event.touches[0].clientY,
+      size: Math.random() * 8 + 4,
+      life: 1.0,
+      velocityX: (Math.random() - 0.5) * 4, // Wider spread for tap burst
+      velocityY: (Math.random() - 0.5) * 4 
+    });
+  }
   },
   {passive: false}
 );
@@ -181,6 +244,52 @@ backButton.addEventListener('mouseleave', () => {
   gsap.to(backButton, { y: 0, duration: 0.4, ease: "power2.out" });
 });
 
+// --- REVERT AFTER EFFECTS TRANSITION (PLAY BUTTON) ---
+playButton.addEventListener('click', () => {
+  
+  // Optional: Play a sound effect when they click play!
+  if (!isAudioMuted) sfx.whoosh.play();
+
+  // 1. Instantly hide the play button and grey overlay
+  gsap.to([playButton, greyOverlay], { opacity: 0, duration: 0.2 });
+
+  // 2. Slide the AE UI back down off the screen
+  gsap.to(aeImageOverlay, {
+    yPercent: 100, 
+    duration: 1.5,
+    ease: "power3.inOut"
+  });
+
+  // 3. Expand the screenshot back to full screen
+  gsap.to(screenshotContainer, {
+    scale: 1,   // Back to 100% size
+    x: "0%",    // Centered
+    y: "0%",    // Centered
+    duration: 1.5,
+    ease: "power3.inOut",
+    onComplete: () => {
+      
+      // 4. THE SWITCH: Hide the 2D fake layers to reveal the 3D canvas underneath!
+      gsap.set([blackBgLayer, screenshotContainer], { opacity: 0 });
+      
+      // Reset the play button and grey overlay so they are ready for the next time
+      gsap.set([playButton, greyOverlay], { opacity: 1 });
+
+      // 5. Unfreeze the 3D Camera!
+      isBreathingPaused = false;
+
+      // 6. Unlock the scene so the user can interact with objects again
+      raycasterObjects.forEach(obj => obj.userData.isTransitioning = false);
+      if (door) door.userData.isAnimating = false;
+
+      // 7. Bring back the main UI buttons
+      gsap.to(audioToggleBtn, { opacity: 1, duration: 0.5 });
+      // (Only bring back the back button if you want it visible from the main view)
+      // gsap.to(backButton, { opacity: 1, duration: 0.5 }); 
+    }
+  });
+});
+
 // --- BACK BUTTON CLICK (ZOOM OUT LOGIC) ---
 backButton.addEventListener('click', () => {
   // 1. Prevent spam clicking
@@ -198,6 +307,7 @@ backButton.addEventListener('click', () => {
       // 4. Swing the door shut
       door.userData.isOpen = false;
 
+      sfx.door_closing.play();
       // 5. ZOOM OUT: Return camera to default
       gsap.to(basePosition, {
         x: defaultBasePosition.x, y: defaultBasePosition.y, z: defaultBasePosition.z,
@@ -238,7 +348,7 @@ function handleRaycasterInteraction() {
       if (object.userData.boundingBox) {
          object.userData.boundingBox.visible = false;
       }
-
+      sfx.door_opening.play();
       // 2. THE GSAP ZOOM IN ANIMATION (Restored Original Offsets)
       const doorWorldPos = new THREE.Vector3();
       object.getWorldPosition(doorWorldPos);
@@ -246,6 +356,7 @@ function handleRaycasterInteraction() {
       // Calculate a point halfway between the camera and the door to zoom to
       const zoomPos = defaultBasePosition.clone().lerp(doorWorldPos, 0.5); 
 
+      sfx.whoosh.play();
       // Glide the camera forward
       gsap.to(basePosition, {
         x: zoomPos.x,
@@ -258,7 +369,7 @@ function handleRaycasterInteraction() {
 
       // Pan the camera to stare directly at the door
       gsap.to(cameraLookTarget, {
-        x: doorWorldPos.x,
+        x: doorWorldPos.x - 0.5,
         y: doorWorldPos.y + 0.8, // RESTORED: Look at the middle/top of the door
         z: doorWorldPos.z,
         duration: 1.5,
@@ -275,11 +386,151 @@ function handleRaycasterInteraction() {
         onStart: () => { backButton.style.pointerEvents = 'auto'; }
       });
     }
+    if (object.name.includes("door_emit_target_raycaster")) {
+      
+      // 1. The Ultimate Lock: If we are already transitioning, ignore all clicks
+      if (object.userData.isTransitioning) return;
+      object.userData.isTransitioning = true;
+      
+      // Also lock the door so the user can't click the back button or door anymore!
+      door.userData.isAnimating = true; 
+
+      // 2. Hide the cursor target box if you have one
+      if (object.userData.boundingBox) {
+         object.userData.boundingBox.visible = false;
+      }
+
+      // 3. Find exactly where the glowing plane is
+      const planePos = new THREE.Vector3();
+      object.getWorldPosition(planePos);
+
+      // Calculate a point just in front of the plane (90% of the way there)
+      const walkThroughPos = basePosition.clone().lerp(planePos, 0.90); 
+      walkThroughPos.y = basePosition.y; // Keep the camera perfectly level!
+
+      sfx.whoosh.play();
+      // 4. THE CAMERA SPRINT
+      gsap.to(basePosition, {
+        x: walkThroughPos.x,
+        y: walkThroughPos.y,
+        z: walkThroughPos.z,
+        duration: 2.0,
+        ease: "power2.in", // 'power2.in' makes it start slow and accelerate!
+        overwrite: true
+      });
+
+      // 5. THE WHITE FADE & REDIRECT
+      gsap.to(whiteOverlay, {
+        opacity: 1,          // Fade to pure white
+        duration: 1.5,       // Take 1.5 seconds to fade
+        delay: 0.5,          // Wait 0.5 seconds before the fade starts so we see the camera move first
+        ease: "power1.inOut",
+        onStart: () => {
+          // Hide the back button immediately so it doesn't float over the white screen
+          gsap.to(backButton, { opacity: 0, duration: 0.2 });
+        },
+        onComplete: () => {
+          // 6. THE REDIRECT: Once the screen is 100% white, change the page!
+          window.location.href = "https://www.youtube.com";
+        }
+      });
+    }
+    // --- LINKEDIN PAN RIGHT & FADE TO BLACK ---
+    if (object.name.includes("Right_sign_Third_target_raycaster") || object.name.includes("Blender_text_emit_raycaster_target")) {
+      
+      // 1. Lock the scene so the user can't click anything else
+      if (object.userData.isTransitioning) return;
+      object.userData.isTransitioning = true;
+      door.userData.isAnimating = true; 
+
+      // 2. Hide the highlight box if it's currently showing
+      if (object.userData.boundingBox) {
+         object.userData.boundingBox.visible = false;
+      }
+
+      // 3. Play the whoosh sound effect
+      if (!isAudioMuted) sfx.whoosh.play();
+
+      // 4. THE CAMERA SLIDE (Pan Right)
+      // We add +4.0 to the X axis to slide the camera physically to the right
+      gsap.to(basePosition, {
+        z: basePosition.z - 1.0, 
+        duration: 1.0,
+        ease: "power2.inOut",
+        overwrite: true
+      });
+
+      // We also move the target so the camera doesn't rotate, it just slides
+      gsap.to(cameraLookTarget, {
+        z: cameraLookTarget.z - 1.0, 
+        duration: 1.0,
+        ease: "power2.inOut",
+        overwrite: true
+      });
+
+      // 5. THE BLACK FADE & REDIRECT
+      gsap.to(blackOverlay, {
+        opacity: 1,
+        duration: 1.0,       // Takes 1 second to fade to black
+        ease: "power2.inOut",
+        onStart: () => {
+          // Hide the UI buttons so they don't float over the black screen
+          gsap.to(backButton, { opacity: 0, duration: 0.2 });
+          gsap.to(audioToggleBtn, { opacity: 0, duration: 0.2 });
+        },
+        onComplete: () => {
+          // 6. REDIRECT: Once the screen is pitch black, load LinkedIn!
+          window.location.href = "https://www.linkedin.com";
+        }
+      });
+    }
+    // --- AFTER EFFECTS TRANSITION (LEFT SIGN) ---
+    if (object.name.includes("Left_sign_Third_target_raycaster") || object.name.includes("AE_text_emit_raycaster_target")) {
+      
+      if (object.userData.isTransitioning) return;
+      object.userData.isTransitioning = true;
+      if (door) door.userData.isAnimating = true; 
+
+      if (object.userData.boundingBox) object.userData.boundingBox.visible = false;
+      if (!isAudioMuted) sfx.whoosh.play();
+
+   // 1. Freeze the camera breathing
+      isBreathingPaused = true;
+
+      gsap.set([blackBgLayer, screenshotContainer], { opacity: 1 });
+
+      // 2. Slide up the AE Image Overlay
+      gsap.to(aeImageOverlay, {
+        yPercent: 0,
+        y: 0, // Slide to top
+        duration: 1.5,
+        ease: "power3.inOut",
+        onStart: () => {
+          gsap.to(backButton, { opacity: 0, duration: 0.2 });
+          gsap.to(audioToggleBtn, { opacity: 0, duration: 0.2 });
+        }
+      });
+      gsap.to(screenshotContainer, {
+        scale: 0.5,   // Shrinks the image down to 45% of its size
+        x: "10%",      // Shifts it slightly to the right
+        y: "-13%",      // Shifts it slightly up
+        duration: 1.5, // Match the duration of the UI sliding up
+        ease: "power3.inOut" // Match the easing so they move completely in sync
+      });
+    }
+    if (object.name.includes("window_inside"))
+    {
+      if (door.userData.isAnimating) return;
+      window.location.href = "https://github.com/moisturizedpotato";
+    }
+
   }
 }
 
 // --- CLICK BINDINGS ---
 window.addEventListener('touchend', (event)=>{
+
+  if (event.target === backButton || event.target === audioToggleBtn) return;
   event.preventDefault();
   handleRaycasterInteraction();
 }, {passive: false}); 
@@ -413,16 +664,22 @@ async function init() {
     }
 
     flickeringLights.forEach((light) => {
+      light.isFlickering = false;
       const noise = Math.sin((elapsedTime + light.offset) * 5) + Math.sin((elapsedTime + light.offset) * 8.5);
 
       if (noise < -1.98) {
         light.material.emissiveIntensity = 0;
+        if (!light.isFlickering) {
+          sfx.flicker.play();
+          light.isFlickering = true;
+        }
       } else {
         light.material.emissiveIntensity = light.baseIntensity * (0.8 + Math.random() * 0.2);
+        light.isFlickering = false;
       }
     });
 
-    updateCameraBreathing(elapsedTime, cameraLookTarget);
+    updateCameraBreathing(elapsedTime, cameraLookTarget, isBreathingPaused, cameraLookTarget);
 
     raycaster.setFromCamera(pointer, camera);
     currentIntersects = raycaster.intersectObjects(raycasterObjects);
@@ -442,9 +699,23 @@ async function init() {
     // the door it is attached to is currently swinging open/closed!
     box.update(); 
     });
+
+    githubBubble.style.opacity = '0';
     
     if (currentIntersects.length > 0) {
       const hoveredObj = currentIntersects[0].object;
+
+      const hoveredName = hoveredObj.name;
+      if (hoveredName !== lastHoveredObjectName) {
+        if (hoveredName.includes("Flower_1")) sfx.flower1.play();
+        else if (hoveredName.includes("Flower_2")) sfx.flower2.play();
+        else if (hoveredName.includes("Flower_3")) sfx.flower3.play();
+        else if (hoveredName.includes("wheel")) sfx.tyre.play();
+        else if (hoveredName.includes("window_inside")) sfx.window.play();
+        else if (hoveredName.includes("sign") || hoveredName.includes("text")) sfx.sign.play();
+
+        lastHoveredObjectName = hoveredName; // Save it so it doesn't repeat!
+      }
       if (hoveredObj.name.includes("wheel"))
       {
         interactableWheels.forEach(wheel => {
@@ -488,6 +759,25 @@ async function init() {
           playSignHoverLeave(currentlyHoveredSignGroup);
           currentlyHoveredSignGroup = null; // Reset the tracker
         }
+      }
+      if (hoveredObj.name.includes("window_inside")) {
+        githubBubble.style.opacity = '1';
+
+        const windowBox = new THREE.Box3().setFromObject(hoveredObj);
+        const windowCenter = new THREE.Vector3();
+        windowBox.getCenter(windowCenter);
+
+        // 2. Magic Math: Project that 3D point onto the 2D camera screen
+        windowCenter.project(camera);
+
+        // 3. Convert the normalized screen coordinates (-1 to +1) into actual pixel coordinates
+        const screenX = (windowCenter.x * 0.5 + 0.5) * sizes.width;
+        // The Y axis is inverted in 2D HTML vs 3D WebGL!
+        const screenY = -(windowCenter.y * 0.5 - 0.5) * sizes.height;
+
+        // 4. Move the HTML bubble to those pixels
+        // We subtract 20 from Y to make it float just a bit higher than the center
+        githubBubble.style.transform = `translate(-50%, -100%) translate(${screenX - 100}px, ${screenY - 20}px)`;
       }
     }
     targetRotation = door.userData.isOpen ? door.userData.openRotation : door.userData.closedRotation;
