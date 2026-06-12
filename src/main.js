@@ -484,7 +484,6 @@ function handleRaycasterInteraction() {
         playButton,
         greyOverlay,
         backButton,
-        audioToggleBtn,
       });
     }
     if (object.name.includes("window_inside"))
@@ -629,7 +628,12 @@ async function init() {
     fireflies.update(elapsedTime);
     CabinEnvironment.updateLights(elapsedTime);
     updateCameraBreathing(elapsedTime, cameraLookTarget, isBreathingPaused, cameraLookTarget);
-    RaycasterManager.update(pointer, camera);
+    if (!isBreathingPaused) {
+      RaycasterManager.update(pointer, camera);
+    } else {
+      currentIntersects = [];
+      document.body.style.cursor = 'default';
+    }
 
     CabinEnvironment.updateMaterials();
 

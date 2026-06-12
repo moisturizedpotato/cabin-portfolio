@@ -26,14 +26,14 @@ export function fadeToLinkedIn({ blackOverlay, backButton, audioToggleBtn, onCom
   });
 }
 
-export function showAfterEffectsPreview({ aeImageOverlay, screenshotContainer, blackBgLayer, playButton, greyOverlay, backButton, audioToggleBtn, onComplete }) {
+export function showAfterEffectsPreview({ aeImageOverlay, screenshotContainer, blackBgLayer, playButton, greyOverlay, backButton, onComplete }) {
   gsap.to(aeImageOverlay, {
     yPercent: 0,
     y: 0,
     duration: 1.5,
     ease: 'power3.inOut',
     onStart: () => {
-      gsap.to([backButton, audioToggleBtn], { opacity: 0, duration: 0.2 });
+      gsap.to([backButton], { opacity: 0, duration: 0.2 });
     },
   });
 
