@@ -439,3 +439,39 @@
   }
 }
 
+#intro-message-box {
+  position: fixed;
+  
+  /* Positions the box in the lower middle of the screen */
+  bottom: 85%; 
+  left: 56%;
+  transform: translateX(-50%);
+  scale: 150%;
+  
+  /* The slightly white-pink transparent background */
+  background-color: rgba(255, 230, 240, 0.15); 
+  
+  /* Adds a subtle frosted glass blur to the background behind the box */
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  
+  /* Sits above the canvas, but below the loading screen */
+  z-index: 6000; 
+  
+  opacity: 0;
+  pointer-events: none; /* Crucial: lets clicks pass through to the 3D scene */
+  text-align: center;
+}
+
+#intro-message-text {
+  color: #ffffff;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  letter-spacing: 0.8px;
+  -webkit-font-smoothing: antialiased;
+}
+

@@ -39,6 +39,8 @@ const {
   aeAssetsScrollbox,
   assetItems,
   sceneScreenshot,
+  introText,
+  introBox
 } = elements;
 const raycasterManager = createRaycasterManager();
 const { raycaster, pointer } = raycasterManager;
@@ -120,6 +122,35 @@ loadingManager.onLoad = () => {
       ease: "power3.inOut",  // Smooth acceleration and deceleration
       delay: 0.5             // Wait 0.5s so the blocks start clearing first!
     });
+
+    introText.innerText = "knock the door to my cabin to enter";
+
+    // Create a timeline that waits until the block unravel is mostly done
+    const introTl = gsap.timeline({ delay: 2.0 }); 
+
+    introTl
+      // Fade the box and first text in
+      .to(introBox, { opacity: 1, duration: 1.5, ease: "power2.inOut" })
+      
+      // Do nothing for 5 seconds (this holds the text on screen)
+      .to({}, { duration: 5.0 }) 
+      
+      // Fade out JUST the text
+      .to(introText, { opacity: 0, duration: 0.5, ease: "power2.inOut" })
+      
+      // Swap the text instantly while it is invisible
+      .call(() => { 
+        introText.innerText = "or change your courses. Tap the signs to determine your path."; 
+      })
+      
+      // Fade the new text back in
+      .to(introText, { opacity: 1, duration: 0.5, ease: "power2.inOut" })
+      
+      // Hold the new text on screen for another 5 seconds
+      .to({}, { duration: 5.0 })
+      
+      // Fade the entire box and text away forever
+      .to(introBox, { opacity: 0, duration: 1.5, ease: "power2.inOut" });
 
   }, 500); 
 };

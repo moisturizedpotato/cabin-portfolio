@@ -20,7 +20,9 @@ export function createUIManager() {
     aeAssetsScrollbox: document.querySelector('#ae-assets-scrollbox'),
     assetItems: document.querySelectorAll('.ae-asset-item'),
     mobileDropdown: document.querySelector('#ae-mobile-dropdown'),
-    sceneScreenshot: document.querySelector('#scene-screenshot')
+    sceneScreenshot: document.querySelector('#scene-screenshot'),
+    introText: document.querySelector('#intro-message-text'),
+    introBox: document.querySelector('#intro-message-box')
   };
 
 
