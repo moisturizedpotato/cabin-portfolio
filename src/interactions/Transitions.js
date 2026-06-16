@@ -26,7 +26,7 @@ export function fadeToLinkedIn({ blackOverlay, backButton, audioToggleBtn, onCom
   });
 }
 
-export function showAfterEffectsPreview({ aeImageOverlay, screenshotContainer, blackBgLayer, playButton, greyOverlay, backButton, onComplete }) {
+export function showAfterEffectsPreview({ aeImageOverlay, screenshotContainer, blackBgLayer, playButton, greyOverlay, backButton, onComplete, audioManager }) {
   gsap.to(aeImageOverlay, {
     yPercent: 0,
     y: 0,
@@ -35,6 +35,7 @@ export function showAfterEffectsPreview({ aeImageOverlay, screenshotContainer, b
     onStart: () => {
       gsap.to([backButton], { opacity: 0, duration: 0.2 });
     },
+    onComplete: () => {},
   });
 
   gsap.to(screenshotContainer, {
@@ -43,14 +44,14 @@ export function showAfterEffectsPreview({ aeImageOverlay, screenshotContainer, b
     y: window.innerWidth <= 768 ? '-25%' : '-13%',
     duration: 1.5,
     ease: 'power3.inOut',
-    onComplete,
+    onComplete: () => {if (!audioManager.isMuted()) audioManager.toggleAudio();},
   });
 
   gsap.set([blackBgLayer, screenshotContainer], { opacity: 1 });
   gsap.set([playButton, greyOverlay], { opacity: 1 });
 }
 
-export function revertAfterEffectsPreview({ aeImageOverlay, screenshotContainer, blackBgLayer, playButton, greyOverlay, audioToggleBtn, onComplete }) {
+export function revertAfterEffectsPreview({ aeImageOverlay, screenshotContainer, blackBgLayer, playButton, greyOverlay, audioToggleBtn, onComplete, audioManager }) {
   gsap.to([playButton, greyOverlay], { opacity: 0, duration: 0.2 });
 
   gsap.to(aeImageOverlay, {
@@ -69,6 +70,7 @@ export function revertAfterEffectsPreview({ aeImageOverlay, screenshotContainer,
       gsap.set([blackBgLayer, screenshotContainer], { opacity: 0 });
       gsap.set([playButton, greyOverlay], { opacity: 1 });
       gsap.to(audioToggleBtn, { opacity: 1, duration: 0.5 });
+      audioManager.toggleAudio();
       onComplete?.();
     },
   });

@@ -40,12 +40,18 @@ const {
   assetItems,
   sceneScreenshot,
   introText,
-  introBox
+  introBox,
+  enterButton,
+  loadingContainer,
+  closeProspectWindowButton,
+  miniWindow
 } = elements;
 const raycasterManager = createRaycasterManager();
 const { raycaster, pointer } = raycasterManager;
 
 let lastHoveredObjectName = null;
+let isMiniWindowOpen = false;
+let activeWindowMesh = null;
 
 const canvas = document.querySelector('#experience-canvas');
 const sizes = { width: window.innerWidth, height: window.innerHeight };
@@ -97,61 +103,11 @@ const cameraLookTarget = new THREE.Vector3(0.021063226292135844, defaultTargetY 
 // --- TRIGGER THE DIAGONAL UNRAVEL EFFECT ---
 loadingManager.onLoad = () => {
   setTimeout(() => {
-    document.querySelector('.loading-container').style.display = 'none';
-
-    // 1. The Block Unravel Animation
-    gsap.to('.loading-block', {
-      scale: 0, 
-      opacity: 0, 
-      duration: 0.3, 
-      ease: "power1.in", 
-      stagger: {
-        amount: 1.5, 
-        grid: [rows, cols], 
-        from: 0 
-      },
-      onComplete: () => {
-        loadingScreen.style.display = 'none';
-      }
-    });
-
-    // 2. ADD THIS: The Cinematic Head Raise
-    gsap.to(cameraLookTarget, {
-      y: defaultTargetY,  // Animate back to the saved default
-      duration: 2.5,         // Make it slow and dramatic
-      ease: "power3.inOut",  // Smooth acceleration and deceleration
-      delay: 0.5             // Wait 0.5s so the blocks start clearing first!
-    });
-
-    introText.innerText = "knock the door to my cabin to enter";
-
-    // Create a timeline that waits until the block unravel is mostly done
-    const introTl = gsap.timeline({ delay: 2.0 }); 
-
-    introTl
-      // Fade the box and first text in
-      .to(introBox, { opacity: 1, duration: 1.5, ease: "power2.inOut" })
-      
-      // Do nothing for 5 seconds (this holds the text on screen)
-      .to({}, { duration: 5.0 }) 
-      
-      // Fade out JUST the text
-      .to(introText, { opacity: 0, duration: 0.5, ease: "power2.inOut" })
-      
-      // Swap the text instantly while it is invisible
-      .call(() => { 
-        introText.innerText = "or change your courses. Tap the signs to determine your path."; 
-      })
-      
-      // Fade the new text back in
-      .to(introText, { opacity: 1, duration: 0.5, ease: "power2.inOut" })
-      
-      // Hold the new text on screen for another 5 seconds
-      .to({}, { duration: 5.0 })
-      
-      // Fade the entire box and text away forever
-      .to(introBox, { opacity: 0, duration: 1.5, ease: "power2.inOut" });
-
+    // Hide the progress bar
+    loadingContainer.style.display = 'none';
+    
+    // Reveal the Enter button
+    enterButton.style.display = 'block';
   }, 500); 
 };
 
@@ -237,6 +193,12 @@ const PostProcessing = {
 
 const handlePlayButtonClick = () => {
   if (!audioManager.isMuted()) sfx.whoosh.play();
+  gsap.to(audioToggleBtn, { 
+      opacity: 1, 
+      duration: 0.5, 
+      delay: 0.8, // Waits for the UI to slide away first
+      onStart: () => { audioToggleBtn.style.pointerEvents = 'auto'; } 
+    });
     revertAfterEffectsPreview({
       aeImageOverlay,
       screenshotContainer,
@@ -244,6 +206,7 @@ const handlePlayButtonClick = () => {
       playButton,
       greyOverlay,
       audioToggleBtn,
+      audioManager,
       onComplete: () => {
         isBreathingPaused = false;
         raycasterObjects.forEach((obj) => {
@@ -355,10 +318,82 @@ const handleMobileDropdown = (event) =>{
   if (!audioManager.isMuted()) sfx.sign.play();
 }
 
+const handleEnterButton = (event) =>{
+  
+  // --- AUDIO UNLOCK ---
+  // Since the user just clicked, the browser grants audio permissions!
+  // If you have a background ambient track, start it right here:
+  // sfx.ambient_forest.play(); 
+
+  audioManager.toggleAudio();
+  // Hide the enter button instantly
+  enterButton.style.display = 'none';
+
+  // --- START THE GSAP REVEAL SEQUENCE ---
+  
+  // 1. The Block Unravel Animation
+  gsap.to('.loading-block', {
+    scale: 0, 
+    opacity: 0, 
+    duration: 0.3, 
+    ease: "power1.in", 
+    stagger: {
+      amount: 1.5, 
+      grid: [rows, cols], 
+      from: 0 
+    },
+    onComplete: () => {
+      loadingScreen.style.display = 'none';
+    }
+  });
+
+  // 2. The Cinematic Head Raise
+  gsap.to(cameraLookTarget, {
+    y: defaultTargetY,  
+    duration: 2.5,         
+    ease: "power3.inOut",  
+    delay: 0.5             
+  });
+
+  // 3. The Intro Message Sequence (from our previous step)
+  
+  if (introBox && introText) {
+    introText.innerText = "knock the door to my cabin to enter";
+    const introTl = gsap.timeline({ delay: 2.0 }); 
+
+    introTl
+      .to(introBox, { opacity: 1, duration: 1.5, ease: "power2.inOut" })
+      .to({}, { duration: 5.0 }) 
+      .to(introText, { opacity: 0, duration: 0.5, ease: "power2.inOut" })
+      .call(() => { 
+        introText.innerText = "or change your courses. Tap the signs to determine your path."; 
+      })
+      .to(introText, { opacity: 1, duration: 0.5, ease: "power2.inOut" })
+      .to({}, { duration: 5.0 })
+      .to(introBox, { opacity: 0, duration: 1.5, ease: "power2.inOut" });
+  }
+};
+
+const handleExitProspectWindow = (event) => {
+  if (!audioManager.isMuted()) sfx.window.play();
+    gsap.fromTo(miniWindow, 
+    { opacity: 1, scale: 1, duration: 1.2, ease: "elastic.out(1, 0.6)" },
+    { opacity: 0, scale: 0.3, xPercent: -50, yPercent: -50 }
+  );
+  miniWindow.style.display = 'none';
+  isMiniWindowOpen = false;
+  if (activeWindowMesh) {
+        activeWindowMesh.userData.isTransitioning = false;
+        activeWindowMesh = null; // Clear it out
+  }
+};
+
 
 
 // --- 3D RAYCASTER LOGIC (ZOOM IN LOGIC) ---
 function handleRaycasterInteraction() {
+  if (isMiniWindowOpen) return;
+
   if (currentIntersects.length > 0) {
     const object = currentIntersects[0].object;
     
@@ -500,12 +535,18 @@ function handleRaycasterInteraction() {
       
       if (object.userData.isTransitioning) return;
       object.userData.isTransitioning = true;
-      if (door) door.userData.isAnimating = true; 
+      if (door) door.userData.isAnimating = true;
 
       if (object.userData.boundingBox) object.userData.boundingBox.visible = false;
       if (!audioManager.isMuted()) sfx.whoosh.play();
 
       sceneScreenshot.style.display = 'block';
+
+      gsap.to(audioToggleBtn, { 
+        opacity: 0, 
+        duration: 0.3, 
+        onComplete: () => { audioToggleBtn.style.pointerEvents = 'none'; } 
+      });
 
       isBreathingPaused = true;
       showAfterEffectsPreview({
@@ -515,12 +556,36 @@ function handleRaycasterInteraction() {
         playButton,
         greyOverlay,
         backButton,
+        audioManager
       });
     }
-    if (object.name.includes("window_inside"))
-    {
-      if (door.userData.isAnimating) return;
-      window.location.href = "https://github.com/moisturizedpotato";
+    if (object.name.includes("window_inside")) {
+      
+      // 1. Lock checks so it doesn't fire while the camera is moving
+      if (door && door.userData.isAnimating) return;
+      if (object.userData.isTransitioning) return;
+
+      isMiniWindowOpen = true;
+      
+      object.userData.isTransitioning = true; // Lock the object
+      activeWindowMesh = object;
+
+      // Hide the highlight box
+      if (object.userData.boundingBox) object.userData.boundingBox.visible = false;
+      
+      // Play interaction sound
+      if (typeof audioManager !== 'undefined' && !audioManager.isMuted() && sfx.whoosh) {
+        sfx.whoosh.play();
+      }
+
+      // 2. THE BOUNCE-IN ANIMATION
+      miniWindow.style.display = 'block';
+
+      // We use xPercent and yPercent to keep it perfectly centered while it scales
+      gsap.fromTo(miniWindow, 
+        { opacity: 0, scale: 0.3, xPercent: -50, yPercent: -50 }, 
+        { opacity: 1, scale: 1, duration: 1.2, ease: "elastic.out(1, 0.6)" }
+      );
     }
 
   }
@@ -565,7 +630,9 @@ const inputHandler = createInputHandler({
   onPlayButtonClick: handlePlayButtonClick,
   onBackButtonClick: handleBackButtonClick,
   onAssetItemClick: handleAssetItemClick,
-  onMobileDropdown: handleMobileDropdown
+  onMobileDropdown: handleMobileDropdown,
+  onEnterButton: handleEnterButton,
+  onExitProspectWindow: handleExitProspectWindow
 });
 
 inputHandler.bind();

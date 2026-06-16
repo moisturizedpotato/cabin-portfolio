@@ -6,7 +6,9 @@ export function createInputHandler({
   onPlayButtonClick,
   onBackButtonClick,
   onAssetItemClick,
-  onMobileDropdown
+  onMobileDropdown,
+  onEnterButton,
+  onExitProspectWindow
 }) {
   const updatePointerFromEvent = (event) => {
     const clientX = event.touches ? event.touches[0].clientX : event.clientX;
@@ -47,7 +49,7 @@ export function createInputHandler({
   };
 
   const handleTouchEnd = (event) => {
-    if (event.target === elements.mobileDropdown || event.target === elements.backButton || event.target === elements.audioToggleBtn || event.target === elements.playButton) {
+    if (event.target === elements.enterButton || event.target === elements.closeProspectWindowButton || event.target === elements.mobileDropdown || event.target === elements.backButton || event.target === elements.audioToggleBtn || event.target === elements.playButton) {
       return;
     }
 
@@ -73,7 +75,12 @@ export function createInputHandler({
     if (elements.backButton && typeof onBackButtonClick === 'function') {
       elements.backButton.addEventListener('click', onBackButtonClick);
     }
-    console.log(elements.assetItems);
+    if (elements.enterButton && typeof onEnterButton === 'function'){
+      elements.enterButton.addEventListener('click', onEnterButton);
+    }
+    if (elements.closeProspectWindowButton && typeof onExitProspectWindow === 'function'){
+     elements.closeProspectWindowButton.addEventListener('click', onExitProspectWindow);
+    }
     if (elements.assetItems && typeof onAssetItemClick === 'function')
     {
         elements.assetItems.forEach((item) => {

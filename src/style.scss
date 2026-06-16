@@ -250,6 +250,7 @@
 
   @media (max-width: 768px) {
     background-image: url('/images/ae_ss_phone.png');
+    background-size: 100%, 100%;
   }
 }
 
@@ -408,7 +409,7 @@
   z-index: 8600;
   
   /* Positions the dropdown nicely at the top of the mobile screen */
-  top: 37.5%; 
+  top: 36.5%; 
   left: 50%;
   transform: translateX(-50%); /* Perfectly centers it */
   width: 97%;
@@ -465,6 +466,11 @@
   opacity: 0;
   pointer-events: none; /* Crucial: lets clicks pass through to the 3D scene */
   text-align: center;
+    @media (max-width: 768px) {
+      scale: 100%;
+      left: 46%;
+      bottom: 69%;
+  }
 }
 
 #intro-message-text {
@@ -475,3 +481,92 @@
   -webkit-font-smoothing: antialiased;
 }
 
+#enter-button {
+  background-color: transparent;
+  color: #ffffff;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 4px;
+  padding: 12px 36px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  /* Puts it strictly in front of the black loading blocks */
+  z-index: 10001; 
+}
+
+#enter-button:hover {
+  background-color: #ffffff;
+  color: #000000;
+  box-shadow: 0px 0px 15px rgba(255, 255, 255, 0.3);
+}
+
+#future-prospects-window {
+  display: none; /* Hidden until triggered */
+  position: fixed;
+  
+  /* Start it exactly in the center of the screen */
+  top: 50%;
+  left: 50%;
+  
+  /* Dimensions explicitly smaller than a portrait phone */
+  width: 280px; 
+  padding: 30px 20px 20px 20px;
+  
+  /* Dark cinematic background with frosted glass */
+  background-color: rgba(20, 20, 25, 0.85); 
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 16px;
+  z-index: 10000;
+  
+  /* THE GLOWING RIM HIGHLIGHT */
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 20px rgba(170, 59, 255, 0.4), inset 0 0 10px rgba(170, 59, 255, 0.2);
+  
+  color: #ffffff;
+  font-family: 'Segoe UI', Roboto, sans-serif;
+  pointer-events: auto; /* Ensure clicks register */
+}
+
+#close-prospects-btn {
+  position: absolute;
+  top: 10px;
+  left: 14px; /* Positioned top left as requested */
+  font-size: 26px;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+  color: #aaaaaa;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+#close-prospects-btn:hover {
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+}
+
+.prospects-heading {
+  font-size: 18px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding-bottom: 8px;
+}
+
+.prospects-list {
+  list-style-type: square;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #cccccc;
+}
+
+.prospects-list li {
+  margin-bottom: 10px;
+}

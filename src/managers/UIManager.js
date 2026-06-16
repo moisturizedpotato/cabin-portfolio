@@ -22,7 +22,11 @@ export function createUIManager() {
     mobileDropdown: document.querySelector('#ae-mobile-dropdown'),
     sceneScreenshot: document.querySelector('#scene-screenshot'),
     introText: document.querySelector('#intro-message-text'),
-    introBox: document.querySelector('#intro-message-box')
+    introBox: document.querySelector('#intro-message-box'),
+    enterButton: document.querySelector('#enter-button'),
+    loadingContainer: document.querySelector('.loading-container'),
+    closeProspectWindowButton: document.querySelector('#close-prospects-btn'),
+    miniWindow: document.querySelector('#future-prospects-window')
   };
 
 
