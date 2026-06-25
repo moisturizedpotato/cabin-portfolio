@@ -9,7 +9,7 @@ export function loadEnvironment(scene, manager) {
 
   scene.environment = previewTexture;
   scene.background = previewTexture;
-  scene.backgroundIntensity = 0.4;
+  scene.backgroundIntensity = 0.1;
 
   const loadHighQualityEnvironment = () => {
     const exrLoader = new EXRLoader(manager);
