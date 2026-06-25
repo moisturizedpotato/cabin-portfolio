@@ -1,6 +1,7 @@
 import { Howl, Howler } from 'howler';
 
 export function createAudioManager() {
+  let manual_toggles = true;
   const state = {
     isAudioMuted: true,
   };
@@ -54,6 +55,8 @@ export function createAudioManager() {
     }
   };
 
+  const getManualToggle = () => {return manual_toggles;};
+
   const setMuted = (value) => {
     state.isAudioMuted = value;
     applyMuteState();
@@ -61,7 +64,18 @@ export function createAudioManager() {
 
   Howler.mute(true);
   if (audioToggleBtn) {
-    audioToggleBtn.addEventListener('click', toggleAudio);
+    audioToggleBtn.addEventListener('click', () => {
+      manual_toggles = !manual_toggles;
+      state.isAudioMuted = !state.isAudioMuted;
+      applyMuteState();
+
+      if (!state.isAudioMuted) {
+        const bgm = sfx.bgm;
+        if (bgm && !bgm.playing()) {
+          bgm.play();
+        }
+      }
+    });
   }
 
   return {
@@ -70,5 +84,7 @@ export function createAudioManager() {
     toggleAudio,
     setMuted,
     isMuted: () => state.isAudioMuted,
+    getManualToggle
+
   };
 }

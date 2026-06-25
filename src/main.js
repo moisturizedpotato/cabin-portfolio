@@ -204,7 +204,6 @@ const handlePlayButtonClick = () => {
       playButton,
       greyOverlay,
       audioToggleBtn,
-      audioManager,
       onComplete: () => {
         playButton.style.pointerEvents = 'none';
         isBreathingPaused = false;
@@ -213,6 +212,7 @@ const handlePlayButtonClick = () => {
         });
         if (door) door.userData.isAnimating = false;
       },
+      audioManager
     });
 };
 
@@ -529,7 +529,7 @@ function handleRaycasterInteraction() {
         playButton,
         greyOverlay,
         backButton,
-        audioManager
+        audioManager,
       });
     }
     if (object.name.includes("window_inside")) {
